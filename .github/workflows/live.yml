@@ -1,0 +1,81 @@
+# rames-live-clipper — OUTIL 1 « clips pendant le live » de RamesRD.
+# Lancement automatique : Twitch « stream.online » → relais Cloudflare (signature vérifiée, anti-doublon) → cette Action.
+# Secours manuel : onglet Actions → « Live – en direct » → Run workflow.
+#
+# SÉCURITÉ (dépôt public) :
+# - seul déclencheur : workflow_dispatch (personne d'extérieur ne peut lancer ; aucune pull request ne déclenche rien) ;
+# - moteur, critères, seuil, réglages : dans un dépôt PRIVÉ, lus au moment du live avec le secret PRIVE_TOKEN ;
+# - journal filtré : seules les lignes « § … » (états généraux) sont affichées, jamais un score, un critère,
+#   une phrase, un pseudo du chat, un lien privé ou une clé ;
+# - aucune vidéo ni aucun fichier n'est gardé ici (pas d'« artifacts ») : montage et publication côté privé.
+name: Live – en direct
+run-name: "Live – en direct (${{ inputs.source }}${{ inputs.essai == 'oui' && ', essai' || '' }})"
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Qui lance : manuel (bouton) ou twitch (relais automatique)"
+        default: manuel
+        type: choice
+        options: [manuel, twitch]
+      essai:
+        description: "oui = test du lancement : rien n'est enregistré ni publié"
+        default: non
+        type: choice
+        options: [non, oui]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live
+  cancel-in-progress: false
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - name: Démarrage
+        env:
+          SOURCE: ${{ inputs.source }}
+        run: echo "✅ Outil de clips en direct démarré (source = $SOURCE)"
+      - name: Code privé (lecture seule, clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
+      - name: Mode essai (arrêt ici, rien enregistré ni publié)
+        if: inputs.essai == 'oui'
+        run: |
+          test -f prive/factory/live.py && echo "✅ Code privé accessible." || { echo "❌ Code privé inaccessible"; exit 1; }
+          echo "Mode essai : aucun enregistrement, aucun clip, aucune publication."
+      - name: Outils (ffmpeg, transcription)
+        if: inputs.essai != 'oui'
+        run: |
+          sudo apt-get -qq update >/dev/null && sudo apt-get -qq install -y ffmpeg fonts-dejavu-core >/dev/null
+          pip install -q -r prive/requirements.txt >/dev/null 2>&1
+          echo "✅ Outils prêts"
+      - name: Outil 1 (journal filtré)
+        if: inputs.essai != 'oui'
+        working-directory: prive
+        env:
+          LIVE_PUBLIC: "1"
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          LIVE_ATTENTE_MIN: ${{ inputs.source == 'twitch' && '10' || '30' }}
+        run: |
+          set +e
+          python run.py live direct ramesrd > "$RUNNER_TEMP/outil1.log" 2>&1 &
+          pid=$!
+          tail -n +1 -F "$RUNNER_TEMP/outil1.log" 2>/dev/null | grep --line-buffered '^§ ' &
+          wait $pid; code=$?
+          sleep 2; pkill -f "tail -n +1 -F" || true
+          rm -f "$RUNNER_TEMP/outil1.log"
+          [ $code -eq 0 ] && echo "✅ Fin de l'outil 1" || echo "❌ L'outil 1 s'est arrêté (code $code) : détails gardés privés"
+          exit $code
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log
