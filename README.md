@@ -12,3 +12,8 @@ Lanceur public de l'outil « clips pendant le live » de la chaîne Twitch **Ram
 ## Ce qui n'est PAS ici (volontairement)
 Le moteur de sélection, les critères, le seuil, les statistiques, le montage et la publication restent dans un dépôt
 privé, lu au moment du live avec une clé cachée (`PRIVE_TOKEN`, secret GitHub). Voir [SECURITE.md](SECURITE.md).
+
+## Démo client (18/11/2026)
+Deux autres Actions servent à démarcher des streamers : **« Démo client – veille »** (toutes les 10 min, regarde si une
+chaîne à démarcher est en live) et **« Démo client – en direct »** (clips du live, rangés dans un Drive privé).
+Rien n'est publié. Le nom de la chaîne n'apparaît jamais dans les journaux (masqué, repère anonyme).

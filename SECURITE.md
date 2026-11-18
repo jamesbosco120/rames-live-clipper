@@ -1,7 +1,9 @@
 # Sécurité (dépôt public)
 
-1. **Clés** : uniquement dans *Settings → Secrets and variables → Actions* (`PRIVE_TOKEN`). Jamais dans le code.
-2. **Qui peut lancer** : seul déclencheur `workflow_dispatch` (propriétaire du dépôt ou relais avec son jeton).
+1. **Clés** : uniquement dans *Settings → Secrets and variables → Actions* (`PRIVE_TOKEN`, et pour les démos clients
+   `RAMES_DRIVE_RELAY_URL` / `RAMES_DRIVE_RELAY_KEY`). Jamais dans le code.
+2. **Qui peut lancer** : `workflow_dispatch` (propriétaire du dépôt ou relais avec son jeton) et l'horloge de GitHub
+   (« Démo client – veille », toutes les 10 min).
    Aucune pull request, aucun « fork » ne déclenche quoi que ce soit.
 3. **Journaux propres** : l'outil tourne en mode public (`LIVE_PUBLIC=1`) ; le journal complet est écrit dans un fichier
    effacé à la fin, seules les lignes « § … » (états généraux) sont affichées. Jamais de score, critère, phrase,
