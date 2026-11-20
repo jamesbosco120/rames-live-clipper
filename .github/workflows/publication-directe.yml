@@ -1,0 +1,69 @@
+# Lanceur PUBLIC de « Publication directe » (décision de James du 20/11/2026 : forfait de minutes du dépôt privé épuisé ;
+# les Actions qui tournent souvent passent ici, minutes illimitées pour un dépôt public).
+# SÉCURITÉ (même modèle que « Live – en direct », validé par James) :
+# - déclencheurs : horloge de GitHub et workflow_dispatch (propriétaire seulement) ; aucune pull request ne lance rien ;
+# - code, file, journal et réglages restent dans le dépôt PRIVÉ, lu avec le secret PRIVE_TOKEN ;
+# - journal filtré : seules les lignes « § … » (états généraux) sont affichées ; le détail reste privé
+#   (RAFALE – Journal du cerveau, tickets du dépôt privé) ; aucun artifact.
+name: Publication directe
+
+on:
+  schedule:
+    - cron: "5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: publication-directe
+  cancel-in-progress: false
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+
+      - name: Passage (journal filtré)
+        id: passage
+        working-directory: prive
+        env:
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BOITE_MOT_DE_PASSE: ${{ secrets.BOITE_MOT_DE_PASSE }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+
+        run: |
+          set +e
+          test -f scripts/public/publication-directe.sh || { echo "❌ Code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          bash scripts/public/publication-directe.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+
+      - name: Alerte si 2 échecs de suite (ntfy)
+        if: always()
+        working-directory: prive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: bash scripts/public/alerte-echecs.sh publication-directe.yml "Publication directe" "${{ steps.passage.outcome }}" || true
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log "$RUNNER_TEMP"/brain
