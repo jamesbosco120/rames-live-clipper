@@ -17,3 +17,10 @@ privé, lu au moment du live avec une clé cachée (`PRIVE_TOKEN`, secret GitHub
 Deux autres Actions servent à démarcher des streamers : **« Démo client – veille »** (toutes les 10 min, regarde si une
 chaîne à démarcher est en live) et **« Démo client – en direct »** (clips du live, rangés dans un Drive privé).
 Rien n'est publié. Le nom de la chaîne n'apparaît jamais dans les journaux (masqué, repère anonyme).
+
+## Rafale et cerveau (20/11/2026)
+Le forfait de minutes du dépôt privé étant épuisé, les Actions qui tournent souvent sont lancées d'ici :
+**« Rafale – file »** (toutes les 10 min), **« Rafale – Facebook »** et **« Publication directe »** (toutes les heures),
+**« Cerveau – copie vivante »** (toutes les heures et après chaque passage de Rafale). Même modèle que le live : le code,
+la file, le journal et les réglages restent privés ; le journal affiché ici ne montre que des états généraux (« § … »).
+Deux échecs de suite → notification ntfy.

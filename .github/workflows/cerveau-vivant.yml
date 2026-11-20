@@ -1,0 +1,84 @@
+# Lanceur PUBLIC de « Cerveau – copie vivante » (décision de James du 20/11/2026 : forfait de minutes du dépôt privé épuisé ;
+# les Actions qui tournent souvent passent ici, minutes illimitées pour un dépôt public).
+# SÉCURITÉ (même modèle que « Live – en direct », validé par James) :
+# - déclencheurs : horloge de GitHub et workflow_dispatch (propriétaire seulement) ; aucune pull request ne lance rien ;
+# - code, file, journal et réglages restent dans le dépôt PRIVÉ, lu avec le secret PRIVE_TOKEN ;
+# - journal filtré : seules les lignes « § … » (états généraux) sont affichées ; le détail reste privé
+#   (RAFALE – Journal du cerveau, tickets du dépôt privé) ; aucun artifact.
+name: Cerveau – copie vivante
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_run:
+    workflows: ["Rafale – file"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cerveau-vivant
+  cancel-in-progress: false
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+      - name: Dernier commit déjà recopié (repère sans secret)
+        uses: actions/cache/restore@v4
+        with:
+          path: .cerveau-vivant
+          key: cerveau-vivant-${{ github.run_id }}
+          restore-keys: cerveau-vivant-
+      - name: Passage (journal filtré)
+        id: passage
+        working-directory: prive
+        env:
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BOITE_MOT_DE_PASSE: ${{ secrets.BOITE_MOT_DE_PASSE }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+          DEPUIS_FICHIER: ${{ github.workspace }}/.cerveau-vivant/commit
+        run: |
+          set +e
+          test -f scripts/public/cerveau-vivant.sh || { echo "❌ Code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          DEPUIS="$(cat "$DEPUIS_FICHIER" 2>/dev/null)" bash scripts/public/cerveau-vivant.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+      - name: Mémoriser le commit recopié
+        if: success()
+        run: mkdir -p .cerveau-vivant && cp "$RUNNER_TEMP/cerveau-commit" .cerveau-vivant/commit
+      - uses: actions/cache/save@v4
+        if: success()
+        with:
+          path: .cerveau-vivant
+          key: cerveau-vivant-${{ github.run_id }}
+      - name: Alerte si 2 échecs de suite (ntfy)
+        if: always()
+        working-directory: prive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: bash scripts/public/alerte-echecs.sh cerveau-vivant.yml "Cerveau – copie vivante" "${{ steps.passage.outcome }}" || true
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log "$RUNNER_TEMP"/brain
