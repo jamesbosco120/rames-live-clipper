@@ -1,0 +1,66 @@
+# Lanceur PUBLIC de « Faits Réels – stats hebdo » (21/11/2026, demande de James : plus aucune limite de minutes).
+# Même modèle de sécurité que « Rafale – file » : horloge de GitHub ou lancement par le propriétaire seulement,
+# aucune pull request ne lance rien ; code, clés et réglages restent dans le dépôt PRIVÉ (lu avec PRIVE_TOKEN) ;
+# journal public filtré (lignes « § » seulement), aucun artifact.
+name: Faits Réels – stats hebdo
+
+on:
+  schedule:
+    - cron: "0 8 * * 1"   # lundi 9 h à Paris (hiver)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: faits-reels-stats
+  cancel-in-progress: false
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+
+      - name: Passage (journal filtré)
+        id: passage
+        working-directory: prive
+        env:
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          BOITE_MOT_DE_PASSE: ${{ secrets.BOITE_MOT_DE_PASSE }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+
+        run: |
+          set +e
+          test -f scripts/public/faits-reels-stats.sh || { echo "❌ Code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          bash scripts/public/faits-reels-stats.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+
+      - name: Alerte si 2 échecs de suite (ntfy)
+        if: always()
+        working-directory: prive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: bash scripts/public/alerte-echecs.sh faits-reels-stats.yml "Faits Réels – stats hebdo" "${{ steps.passage.outcome }}" || true
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log "$RUNNER_TEMP"/brain
