@@ -1,0 +1,50 @@
+# Lanceur PUBLIC de « Rafale – mise en ligne de l'appli » (21/11/2026). Le dépôt privé ne peut plus lancer d'Actions
+# (facturation GitHub) : ce lanceur envoie le robot « rafale-dm » (appli Rafale perso) sur Cloudflare.
+# Même modèle de sécurité que les autres lanceurs : lancement par le propriétaire seulement, aucune pull request ne lance
+# rien ; code et clés restent privés (code lu avec PRIVE_TOKEN) ; journal public filtré, aucun artifact.
+# Secrets nécessaires DANS CE DÉPÔT : PRIVE_TOKEN, CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID (jamais affichés).
+name: Rafale – mise en ligne de l'appli
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rafale-appli
+  cancel-in-progress: false
+
+jobs:
+  envoi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Tests puis envoi (journal filtré)
+        working-directory: prive/publication/dm/worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do [ -n "${!v}" ] || { echo "§ ❌ secret $v absent de ce dépôt public (à copier depuis rames-clip-factory)"; exit 1; }; done
+          ok=1; for f in test*.mjs; do node --test "$f" > /dev/null 2>&1 || { echo "§ ❌ test en échec : $f"; ok=0; }; done
+          [ $ok -eq 1 ] || exit 1
+          echo "§ ✅ tests verts"
+          npx -y wrangler@4 deploy > "$RUNNER_TEMP/d.log" 2>&1; code=$?
+          rm -f "$RUNNER_TEMP/d.log"
+          [ $code -eq 0 ] && echo "§ ✅ envoyé sur Cloudflare" || { echo "§ ❌ envoi refusé par Cloudflare (code $code)"; exit 1; }
+          sleep 5
+          h=$(curl -s https://rafale-dm.jamesbosco120.workers.dev/app)
+          echo "$h" | grep -q "Mot de passe" && echo "§ ✅ l'appli répond" || { echo "§ ❌ l'appli ne répond pas"; exit 1; }
+      - name: Ménage
+        if: always()
+        run: rm -rf prive
