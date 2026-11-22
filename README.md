@@ -36,3 +36,7 @@ publics sont gratuites et sans limite. Nouveau : **« Vitrine – mise en ligne 
 l'Usine DEV sur Cloudflare Pages (aperçu ou vraie version). Il lit le code privé avec `PRIVE_TOKEN` et a besoin des
 secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` dans ce dépôt (comme « Rafale – mise en ligne de l'appli » et
 « Live – relais : mise en ligne »). Aucun code de site ici, journal filtré, aucun artifact.
+
+## Bande-annonce (22/11/2026)
+**« Bande-annonce – rendu et Drive »** (à la main seulement) : refait la bande-annonce Twitch à partir du montage gardé
+dans le dépôt privé (images de James, musique libre de droits) et l'envoie dans un Drive privé. Rien n'est publié.
