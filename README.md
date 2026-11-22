@@ -46,3 +46,11 @@ dans le dépôt privé (images de James, musique libre de droits) et l'envoie da
 données de Rafale, réglages) dans un Drive **privé**. Ce lanceur a la permission `id-token: write` : GitHub lui donne un
 badge signé que seuls le giveaway et Rafale savent vérifier, sans aucune clé partagée. Ce badge n'est jamais donné à une
 pull request ni à un fork. Journal filtré (nombres seulement), aucun artifact.
+
+## Fusion auto des PR de Claude (22/11/2026, définitif)
+**« Fusion auto – PR de Claude »** (toutes les 5 min) : fusionne les pull requests de Claude des dépôts privés de RAMES
+avec les mêmes règles qu'avant (textes seuls tout de suite ; code et consignes seulement avec la validation de James ;
+étiquette retirée si quelque chose change après la validation ; vérification rouge = rien). Les règles et le code
+restent privés (lus avec `PRIVE_TOKEN`) ; le jeton qui fusionne est un secret de ce dépôt. Une PR qui touche le robot DM
+relance ensuite « Rafale – mise en ligne de l'appli » puis « Rafale – DM (synchro) ». Aucune pull request de CE dépôt
+ne déclenche quoi que ce soit. Journal filtré (numéro de PR + décision), aucun artifact.
