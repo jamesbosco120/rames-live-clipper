@@ -39,11 +39,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Code privé (clé cachée)
+        id: code
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-usine-dev
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
       - name: Contrôles
         env:
           SITE: ${{ inputs.site }}
           MODE: ${{ inputs.mode }}
           FONCTIONS: ${{ inputs.fonctions }}
+          LECTURE: ${{ steps.code.outcome }}
           PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -54,15 +64,9 @@ jobs:
           for v in PRIVE_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             [ -n "${!v}" ] || { echo "§ ❌ secret $v absent de ce dépôt public"; ok=0; }
           done
+          [ "$LECTURE" = "success" ] && echo "§ ✅ code privé lisible" || { echo "§ ❌ code privé illisible : ajouter rames-usine-dev au jeton PRIVE_TOKEN"; ok=0; }
           [ $ok -eq 1 ] || exit 1
           echo "§ ✅ secrets présents"
-      - name: Code privé (clé cachée)
-        uses: actions/checkout@v4
-        with:
-          repository: jamesbosco120/rames-usine-dev
-          token: ${{ secrets.PRIVE_TOKEN }}
-          path: prive
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - name: Envoi vers Cloudflare Pages (journal filtré)
