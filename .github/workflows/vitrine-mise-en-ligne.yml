@@ -1,0 +1,98 @@
+# Lanceur PUBLIC de « Mise en ligne » de l'Usine DEV (22/11/2026, demande de James : 0 €, plus aucune limite de minutes).
+# Le dépôt privé rames-usine-dev ne peut plus lancer d'Actions (forfait gratuit épuisé jusqu'au 1er décembre) : ce lanceur
+# envoie un site de sites/<site>/ sur Cloudflare Pages, avec le script privé scripts/deploy.sh.
+# Même modèle de sécurité que les autres lanceurs : lancement à la main par le propriétaire seulement, aucune pull request
+# ni aucun push ne lance rien ; code et clés restent privés (code lu avec PRIVE_TOKEN) ; journal public filtré, aucun artifact.
+# Secrets nécessaires DANS CE DÉPÔT : PRIVE_TOKEN (lecture de rames-usine-dev), CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+# Les règles de l'Usine DEV s'appliquent toujours : contrôles faits et feu vert de James AVANT la version « en-ligne ».
+name: Vitrine – mise en ligne
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: "Nom du dossier dans sites/ (ex. rafale)"
+        required: true
+        default: rafale
+      mode:
+        description: "apercu = lien test, en-ligne = vraie mise en ligne"
+        required: true
+        type: choice
+        options: [apercu, en-ligne]
+        default: apercu
+      fonctions:
+        description: "oui = aperçu AVEC les fonctions serveur (apps/<site>, ex. offre fondateur). Jamais en vraie mise en ligne."
+        required: true
+        type: choice
+        options: [non, oui]
+        default: non
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vitrine-${{ inputs.site }}
+  cancel-in-progress: false
+
+jobs:
+  envoi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Contrôles
+        env:
+          SITE: ${{ inputs.site }}
+          MODE: ${{ inputs.mode }}
+          FONCTIONS: ${{ inputs.fonctions }}
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          [[ "$SITE" =~ ^[a-z0-9][a-z0-9-]*$ ]] || { echo "§ ❌ nom de site invalide"; exit 1; }
+          [ "$FONCTIONS" = "oui" ] && [ "$MODE" != "apercu" ] && { echo "§ ❌ fonctions serveur : aperçu seulement"; exit 1; }
+          ok=1
+          for v in PRIVE_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
+            [ -n "${!v}" ] || { echo "§ ❌ secret $v absent de ce dépôt public"; ok=0; }
+          done
+          [ $ok -eq 1 ] || exit 1
+          echo "§ ✅ secrets présents"
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-usine-dev
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Envoi vers Cloudflare Pages (journal filtré)
+        working-directory: prive
+        env:
+          SITE: ${{ inputs.site }}
+          MODE: ${{ inputs.mode }}
+          FONCTIONS: ${{ inputs.fonctions }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set +e
+          L="$RUNNER_TEMP/d.log"
+          if [ "$FONCTIONS" = "oui" ]; then
+            [ -d "apps/$SITE/functions" ] || { echo "§ ❌ pas de fonctions serveur pour ce site"; exit 1; }
+            ( cd "apps/$SITE" && npm ci && npm run build:site \
+              && npx -y wrangler@4 pages deploy "../../sites/$SITE" --project-name "rames-$SITE" --branch apercu --commit-dirty=true ) > "$L" 2>&1
+            code=$?
+          elif [ "$MODE" = "apercu" ]; then
+            bash scripts/deploy.sh "$SITE" apercu > "$L" 2>&1; code=$?
+          else
+            bash scripts/deploy.sh "$SITE" > "$L" 2>&1; code=$?
+          fi
+          rm -f "$L"
+          [ $code -eq 0 ] || { echo "§ ❌ envoi refusé (code $code) : détails gardés privés"; exit 1; }
+          if [ "$MODE" = "apercu" ]; then U="https://apercu.rames-$SITE.pages.dev"; else U="https://rames-$SITE.pages.dev"; fi
+          echo "§ ✅ envoyé sur Cloudflare : $U"
+          sleep 8
+          c=$(curl -s -o /dev/null -w '%{http_code}' "$U/")
+          [ "$c" = "200" ] && echo "§ ✅ le site répond" || echo "§ ⚠ le site répond $c (Cloudflare met parfois 1 min)"
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log

@@ -1,7 +1,8 @@
 # Sécurité (dépôt public)
 
 1. **Clés** : uniquement dans *Settings → Secrets and variables → Actions* (`PRIVE_TOKEN`, et pour les démos clients
-   `RAMES_DRIVE_RELAY_URL` / `RAMES_DRIVE_RELAY_KEY`). Jamais dans le code.
+   `RAMES_DRIVE_RELAY_URL` / `RAMES_DRIVE_RELAY_KEY`, pour les mises en ligne Cloudflare `CLOUDFLARE_API_TOKEN` /
+   `CLOUDFLARE_ACCOUNT_ID`). Jamais dans le code.
 2. **Qui peut lancer** : `workflow_dispatch` (propriétaire du dépôt ou relais avec son jeton) et l'horloge de GitHub
    (« Démo client – veille », toutes les 10 min).
    Aucune pull request, aucun « fork » ne déclenche quoi que ce soit.
