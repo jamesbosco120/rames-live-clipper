@@ -1,0 +1,102 @@
+# Lanceur PUBLIC de la fusion auto des PR de Claude (demande de James du 22/11/2026 : « définitif », sans dépendre du
+# forfait de minutes du dépôt privé). Remplace l'Action « Fusion auto (Claude) » de rames-clip-factory et claude-brain.
+# SÉCURITÉ (même modèle que « Rafale – file », « Rafale – mise en ligne de l'appli », « Sauvegarde de nuit ») :
+# - déclencheurs : horloge de GitHub (toutes les 5 min) et workflow_dispatch (propriétaire seulement) ;
+#   AUCUNE pull request, aucun fork de ce dépôt ne lance rien ;
+# - les règles et le code restent dans le dépôt PRIVÉ (scripts/public/fusion_auto.py), lu avec le secret PRIVE_TOKEN ;
+#   les tests relancés par le robot tournent SANS aucun jeton dans leur environnement ;
+# - journal filtré : seules les lignes « § » (numéro de PR + décision) sont affichées ; aucun titre, fichier ni clé ;
+#   aucun artifact. Détails = commentaires sur la PR, dans le dépôt privé.
+# Chaînage robot DM : une PR fusionnée qui touche publication/dm/ → « Rafale – mise en ligne de l'appli » puis, si elle
+# a réussi, « Rafale – DM (synchro) » : le nouveau code et les nouveaux réglages partent ensemble.
+name: Fusion auto – PR de Claude
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      essai:
+        description: "Essai à blanc : affiche les décisions et les droits des jetons, ne fusionne rien"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write          # seulement pour lancer les 2 Actions Rafale de CE dépôt après une fusion publication/dm/
+
+concurrency:
+  group: fusion-auto
+  cancel-in-progress: false
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+
+      - name: Passage (journal filtré)
+        id: passage
+        working-directory: prive
+        env:
+          FUSION_TOKEN: ${{ secrets.FUSION_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          ESSAI: ${{ inputs.essai && '1' || '0' }}
+        run: |
+          set +e
+          test -f scripts/public/fusion_auto.py || { echo "§ ❌ code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          python3 scripts/public/fusion_auto.py > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+
+      - name: Robot DM → mise en ligne de l'appli puis synchro des règles
+        if: always() && steps.passage.outputs.dm == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          lancer() {   # $1 = fichier workflow ; attend la fin, code 0 si réussi
+            local avant id
+            avant=$(gh run list -R "$GITHUB_REPOSITORY" -w "$1" -L 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || echo 0)
+            gh workflow run "$1" -R "$GITHUB_REPOSITORY" --ref main || return 1
+            for i in $(seq 1 30); do
+              sleep 5
+              id=$(gh run list -R "$GITHUB_REPOSITORY" -w "$1" -L 1 --json databaseId -q '.[0].databaseId' 2>/dev/null || echo 0)
+              [ -n "$id" ] && [ "$id" != "$avant" ] && break
+            done
+            [ -n "$id" ] && [ "$id" != "$avant" ] || return 1
+            gh run watch "$id" -R "$GITHUB_REPOSITORY" --exit-status > /dev/null 2>&1
+          }
+          if lancer rafale-appli.yml; then
+            echo "§ ✅ appli Rafale remise en ligne"
+            lancer rafale-dm-synchro.yml && echo "§ ✅ règles DM synchronisées" || { echo "§ ❌ synchro des règles DM ratée"; exit 1; }
+          else
+            echo "§ ❌ mise en ligne de l'appli ratée : synchro des règles NON lancée (code et réglages restent ensemble)"
+            exit 1
+          fi
+
+      - name: Alerte si 2 échecs de suite (ntfy)
+        if: always() && steps.passage.outcome != 'skipped'
+        working-directory: prive
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: bash scripts/public/alerte-echecs.sh fusion-auto.yml "Fusion auto – PR de Claude" "${{ job.status == 'success' && 'success' || 'failure' }}" || true
+
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log
