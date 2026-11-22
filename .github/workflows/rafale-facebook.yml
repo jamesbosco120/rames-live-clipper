@@ -10,6 +10,10 @@ name: Rafale – Facebook
 on:
   schedule:
     - cron: "35 * * * *"
+  # 22/11 : 2e horloge (l'horloge de GitHub saute des passages) : après chaque « Rafale – file ».
+  workflow_run:
+    workflows: ["Rafale – file"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:

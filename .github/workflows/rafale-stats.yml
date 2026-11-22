@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "7 6 * * *"
     - cron: "7 7 * * *"   # rattrapage : passe son tour si le relevé du jour a réussi
+  # 22/11 : l'horloge de GitHub saute souvent des passages sur ce dépôt ; « Rafale – file » (réveillé toutes les ~30 min
+  # par le relais Drive) sert de 2e horloge. Passe son tour avant 6 h UTC ou si le relevé du jour a déjà réussi.
+  workflow_run:
+    workflows: ["Rafale – file"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -34,9 +39,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ "${{ github.event.schedule }}" = "7 7 * * *" ]; then
-            N=$(gh run list -R "${{ github.repository }}" -w rafale-stats.yml -s success --created ">=$(date -u +%F)" --json databaseId --jq length)
-            [ "${N:-0}" -gt 0 ] && { echo "✅ Relevé du jour déjà fait."; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          if [ "${{ github.event_name }}" = "workflow_run" ] && [ "$(date -u +%H)" -lt 6 ]; then
+            echo "Trop tôt pour le relevé du jour."; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if [ "${{ github.event.schedule }}" = "7 7 * * *" ] || [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Seuls comptent les passages qui ont vraiment fait le relevé (pas ceux qui ont passé leur tour).
+            for id in $(gh run list -R "${{ github.repository }}" -w rafale-stats.yml -s success --created ">=$(date -u +%F)" --json databaseId --jq '.[].databaseId'); do
+              if gh run view "$id" -R "${{ github.repository }}" --json jobs --jq '.jobs[].steps[] | select(.name == "Passage (journal filtré)") | .conclusion' | grep -qx success; then
+                echo "✅ Relevé du jour déjà fait."; echo "go=false" >> "$GITHUB_OUTPUT"; exit 0
+              fi
+            done
           fi
           echo "go=true" >> "$GITHUB_OUTPUT"
       - name: Passage (journal filtré)
