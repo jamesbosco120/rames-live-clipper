@@ -40,3 +40,9 @@ secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` dans ce dépôt (comme 
 ## Bande-annonce (22/11/2026)
 **« Bande-annonce – rendu et Drive »** (à la main seulement) : refait la bande-annonce Twitch à partir du montage gardé
 dans le dépôt privé (images de James, musique libre de droits) et l'envoie dans un Drive privé. Rien n'est publié.
+
+## Sauvegarde de nuit (22/11/2026)
+**« Sauvegarde de nuit »** (chaque nuit, 03 h 37 heure de France) : copie les données importantes (inscrits du giveaway,
+données de Rafale, réglages) dans un Drive **privé**. Ce lanceur a la permission `id-token: write` : GitHub lui donne un
+badge signé que seuls le giveaway et Rafale savent vérifier, sans aucune clé partagée. Ce badge n'est jamais donné à une
+pull request ni à un fork. Journal filtré (nombres seulement), aucun artifact.
