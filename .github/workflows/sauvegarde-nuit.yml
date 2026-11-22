@@ -1,0 +1,67 @@
+# Lanceur PUBLIC de « Sauvegarde de nuit » (coffre-fort RAMES, 22/11/2026, ROADMAP W-03, bloc validé par James le 22/11).
+# Chaque nuit vers 03 h 37 (heure de France) : inscrits du giveaway, carnet KV + Moteur de Rafale (rafale-dm, live-relais),
+# état et réglages Rafale, file de publication → une archive dans Drive « Claude montage / Sauvegardes / <date> » (privé).
+# Plus de 30 jours → « Sauvegardes / anciennes » (jamais supprimées). Échec → alerte ntfy.
+# Sécurité : AUCUNE clé partagée avec le giveaway et rafale-dm : ils n'acceptent que le badge signé par GitHub (OIDC) de
+# CE fichier, sur main, lancé par l'horloge ou par le propriétaire (id-token: write ci-dessous). Une pull request ou un
+# fork n'obtient jamais ce badge. Code privé (PRIVE_TOKEN) ; journal filtré (« § » : nombres seulement), aucun artifact.
+name: Sauvegarde de nuit
+
+on:
+  schedule:
+    - cron: "37 2 * * *"      # 02:37 UTC = 03:37 à Paris (heure d'hiver), 04:37 en été
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: sauvegarde-nuit
+  cancel-in-progress: false
+
+jobs:
+  sauvegarde:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
+
+      - name: Sauvegarde (journal filtré)
+        id: passage
+        working-directory: prive
+        env:
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+        run: |
+          set +e
+          test -f scripts/public/sauvegarde.sh || { echo "§ ❌ code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          bash scripts/public/sauvegarde.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+
+      - name: Alerte si la sauvegarde n'a pas pu tourner (ntfy)
+        if: failure()
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: |
+          [ -f "$RUNNER_TEMP/alerte-sauvegarde-envoyee" ] && exit 0
+          [ -n "$NTFY_TOPIC" ] && curl -s -H "Title: Sauvegarde de nuit ratée" -H "Priority: high" -H "Tags: warning" \
+            -d "La sauvegarde de cette nuit n'a pas tourné. Ouvre GitHub Actions (rames-live-clipper > Sauvegarde de nuit)." \
+            "https://ntfy.sh/$NTFY_TOPIC" > /dev/null && echo "§ alerte envoyée" || true
+
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/*.log "$RUNNER_TEMP"/brain
