@@ -24,3 +24,8 @@ Le forfait de minutes du dépôt privé étant épuisé, les Actions qui tournen
 **« Cerveau – copie vivante »** (toutes les heures et après chaque passage de Rafale). Même modèle que le live : le code,
 la file, le journal et les réglages restent privés ; le journal affiché ici ne montre que des états généraux (« § … »).
 Deux échecs de suite → notification ntfy.
+
+## Sondages et stories Twitch (21/11/2026)
+- **« Live – relais : mise en ligne »** : envoie le relais Cloudflare (passage en live + sondages Twitch en 1 touche).
+- **« Stories Twitch – pack du jour »** (chaque matin) : prépare 3 à 5 vidéos courtes dans un Drive privé et programme
+  3 rappels sur le téléphone. Twitch n'a pas d'API pour publier une story : rien n'est publié automatiquement.
