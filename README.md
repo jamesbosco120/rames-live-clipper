@@ -29,3 +29,10 @@ Deux échecs de suite → notification ntfy.
 - **« Live – relais : mise en ligne »** : envoie le relais Cloudflare (passage en live + sondages Twitch en 1 touche).
 - **« Stories Twitch – pack du jour »** (chaque matin) : prépare 3 à 5 vidéos courtes dans un Drive privé et programme
   3 rappels sur le téléphone. Twitch n'a pas d'API pour publier une story : rien n'est publié automatiquement.
+
+## Tout passe par ici jusqu'au 1er décembre (22/11/2026)
+Le compte GitHub est en offre gratuite : les minutes des dépôts privés de novembre sont épuisées, celles des dépôts
+publics sont gratuites et sans limite. Nouveau : **« Vitrine – mise en ligne »** (à la main seulement) envoie un site de
+l'Usine DEV sur Cloudflare Pages (aperçu ou vraie version). Il lit le code privé avec `PRIVE_TOKEN` et a besoin des
+secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` dans ce dépôt (comme « Rafale – mise en ligne de l'appli » et
+« Live – relais : mise en ligne »). Aucun code de site ici, journal filtré, aucun artifact.
