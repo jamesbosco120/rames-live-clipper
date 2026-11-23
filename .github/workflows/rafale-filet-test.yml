@@ -1,0 +1,60 @@
+# Lanceur PUBLIC « Rafale – filet miniature (test) » (23/11/2026) : teste le filet miniature DANS le robot réel, ou refait
+# la miniature d'un reel Facebook déjà publié. Lancement manuel seulement (propriétaire). Code et clés : dépôt PRIVÉ
+# (scripts/public/filet-test.sh). Même file d'attente que « Rafale – file » : jamais en même temps qu'une publication.
+name: Rafale – filet miniature (test)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "essai = fabrique une miniature d'essai · facebook = refait la miniature d'un reel Facebook publié"
+        type: choice
+        options: [essai, facebook]
+        default: essai
+      cible:
+        description: "essai : id Drive d'une vidéo · facebook : id du bloc FILE RAFALE"
+        required: true
+      titre:
+        description: "titre de la miniature d'essai"
+        default: "Test du filet miniature"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rafale-file
+  cancel-in-progress: false
+
+jobs:
+  passage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+      - name: Passage (journal filtré)
+        working-directory: prive
+        env:
+          PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+          ACTION: ${{ inputs.action }}
+          CIBLE: ${{ inputs.cible }}
+          TITRE: ${{ inputs.titre }}
+        run: |
+          set +e
+          test -f scripts/public/filet-test.sh || { echo "❌ Code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          bash scripts/public/filet-test.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          exit $code
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/brain
