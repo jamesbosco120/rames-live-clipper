@@ -1,0 +1,57 @@
+# Lanceur PUBLIC de « Live – après le live » (23/11/2026) : OUTIL 2, les autres bons moments de la rediffusion.
+# Copie du robot du dépôt privé (bloqué : minutes épuisées depuis le 20/11). Lancé par l'outil 1 (« Live – en direct »)
+# avec le jeton de l'Action. Code, critères et clés restent PRIVÉS (lus avec PRIVE_TOKEN) ; journal filtré « § » ;
+# aucune vidéo gardée ici (pas d'artifact).
+name: Live – après le live
+run-name: "Live – après le live"
+
+on:
+  workflow_dispatch:
+    inputs:
+      vod: { description: "Identifiant de la rediffusion", required: true }
+      moments: { description: "Liste compacte de l'outil 1 (JSON)", required: false, default: "{}" }
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-apres
+  cancel-in-progress: false
+
+jobs:
+  clip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - name: Code privé (clé cachée)
+        uses: actions/checkout@v4
+        with:
+          repository: jamesbosco120/rames-clip-factory
+          token: ${{ secrets.PRIVE_TOKEN }}
+          path: prive
+          persist-credentials: false
+      - name: Montage + dépôt (journal filtré)
+        working-directory: prive
+        env:
+          LIVE_PUBLIC: "1"
+          VOD: ${{ inputs.vod }}
+          MOMENTS: ${{ inputs.moments }}
+          BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
+          RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
+          RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          TWITCH_USER_TOKEN: ${{ secrets.TWITCH_USER_TOKEN }}
+          TWITCH_USER_REFRESH_TOKEN: ${{ secrets.TWITCH_USER_REFRESH_TOKEN }}
+        run: |
+          set +e
+          test -f scripts/public/live-apres.sh || { echo "❌ Code privé inaccessible (PRIVE_TOKEN ?)"; exit 1; }
+          bash scripts/public/live-apres.sh > "$RUNNER_TEMP/detail.log" 2>&1
+          code=$?
+          grep '^§ ' "$RUNNER_TEMP/detail.log"
+          rm -f "$RUNNER_TEMP/detail.log"
+          [ $code -eq 0 ] && echo "✅ Terminé" || echo "❌ Échec (code $code) : détails gardés privés"
+          exit $code
+      - name: Ménage
+        if: always()
+        run: rm -rf prive "$RUNNER_TEMP"/brain

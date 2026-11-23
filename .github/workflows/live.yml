@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  actions: write      # 23/11 : lance « Live – clip » et « Live – après le live » de CE dépôt (Actions privées bloquées)
 
 concurrency:
   group: live
@@ -64,6 +65,8 @@ jobs:
         working-directory: prive
         env:
           LIVE_PUBLIC: "1"
+          LIVE_ACTIONS_PUBLIQUES: "1"
+          GITHUB_TOKEN: ${{ github.token }}
           PRIVE_TOKEN: ${{ secrets.PRIVE_TOKEN }}
           LIVE_ATTENTE_MIN: ${{ inputs.source == 'twitch' && '10' || '30' }}
         run: |
