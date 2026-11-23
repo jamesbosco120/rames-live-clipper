@@ -13,6 +13,7 @@ on:
       score: { description: "Score de viralité", required: false, default: "0" }
       fenetre_debut: { description: "Début de la fenêtre de 45 min (UTC, ISO)", required: false, default: "" }
       fenetre_fin: { description: "Fin de la fenêtre de 45 min (UTC, ISO)", required: false, default: "" }
+      essai_outils: { description: "oui = vérifie seulement l'installation des outils (rien monté, rien publié)", required: false, default: "non" }
 
 permissions:
   contents: read
@@ -33,6 +34,9 @@ jobs:
           token: ${{ secrets.PRIVE_TOKEN }}
           path: prive
           persist-credentials: false
+      - name: Python (installation des outils possible)
+        uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - name: Montage + dépôt (journal filtré)
         working-directory: prive
         env:
@@ -42,6 +46,7 @@ jobs:
           LIVE_SCORE: ${{ inputs.score }}
           LIVE_FEN_DEBUT: ${{ inputs.fenetre_debut }}
           LIVE_FEN_FIN: ${{ inputs.fenetre_fin }}
+          ESSAI_OUTILS: ${{ inputs.essai_outils }}
           BRAIN_TOKEN: ${{ secrets.BRAIN_TOKEN }}
           RAMES_DRIVE_RELAY_URL: ${{ secrets.RAMES_DRIVE_RELAY_URL }}
           RAMES_DRIVE_RELAY_KEY: ${{ secrets.RAMES_DRIVE_RELAY_KEY }}
