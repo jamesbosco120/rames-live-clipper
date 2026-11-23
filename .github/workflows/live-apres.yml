@@ -30,6 +30,9 @@ jobs:
           token: ${{ secrets.PRIVE_TOKEN }}
           path: prive
           persist-credentials: false
+      - name: Python (installation des outils possible)
+        uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - name: Montage + dépôt (journal filtré)
         working-directory: prive
         env:

@@ -54,6 +54,9 @@ jobs:
         run: |
           test -f prive/factory/live.py && echo "✅ Code privé accessible." || { echo "❌ Code privé inaccessible"; exit 1; }
           echo "Mode essai : aucun enregistrement, aucun clip, aucune publication."
+      - name: Python (installation des outils possible)
+        uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
       - name: Outils (ffmpeg, transcription)
         if: inputs.essai != 'oui'
         run: |
