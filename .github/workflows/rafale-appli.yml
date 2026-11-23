@@ -33,6 +33,8 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
         run: |
           set +e
           for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do [ -n "${!v}" ] || { echo "§ ❌ secret $v absent de ce dépôt public (à copier depuis rames-clip-factory)"; exit 1; }; done
@@ -42,6 +44,12 @@ jobs:
           npx -y wrangler@4 deploy > "$RUNNER_TEMP/d.log" 2>&1; code=$?
           rm -f "$RUNNER_TEMP/d.log"
           [ $code -eq 0 ] && echo "§ ✅ envoyé sur Cloudflare" || { echo "§ ❌ envoi refusé par Cloudflare (code $code)"; exit 1; }
+          # 23/11 : bouton « Reconnecter YouTube » de l'appli : identifiants du projet Google posés dans les secrets du
+          # Worker (jamais affichés). Le jeton de chaîne, lui, est rangé par l'appli elle-même après le clic de James.
+          for v in YT_CLIENT_ID YT_CLIENT_SECRET; do
+            [ -n "${!v}" ] || { echo "§ ⚠ secret $v absent : bouton YouTube pas encore prêt"; continue; }
+            printf %s "${!v}" | npx -y wrangler@4 secret put "$v" > /dev/null 2>&1 && echo "§ ✅ $v rangé dans l'appli" || echo "§ ⚠ $v pas rangé"
+          done
           sleep 5
           h=$(curl -s https://rafale-dm.jamesbosco120.workers.dev/app)
           echo "$h" | grep -q "Mot de passe" && echo "§ ✅ l'appli répond" || { echo "§ ❌ l'appli ne répond pas"; exit 1; }
