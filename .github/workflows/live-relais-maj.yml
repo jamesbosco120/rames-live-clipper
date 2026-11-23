@@ -34,6 +34,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
         run: |
           set +e
           for v in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do [ -n "${!v}" ] || { echo "§ ❌ secret $v absent de ce dépôt public"; exit 1; }; done
@@ -47,6 +48,14 @@ jobs:
               && echo "§ ✅ ID client Twitch posé dans le relais" || echo "§ ❌ ID client Twitch pas posé"
           fi
           sleep 5
+          # 23/11 : on fige d'abord les clés (touches Stream Deck + EventSub) avec l'ANCIEN secret encore en place,
+          # puis seulement on pose le nouveau secret de l'appli Twitch (s'il est dans ce dépôt).
+          curl -s -o /dev/null "https://live-relais.jamesbosco120.workers.dev/sondage?k=fige"
+          if [ -n "$TWITCH_CLIENT_SECRET" ]; then
+            printf %s "$TWITCH_CLIENT_SECRET" | npx -y wrangler@4 secret put TWITCH_CLIENT_SECRET > /dev/null 2>&1 \
+              && echo "§ ✅ nouveau secret de l'appli Twitch posé dans le relais (clés des touches inchangées)" || echo "§ ❌ secret Twitch pas posé"
+            sleep 8
+          fi
           curl -s https://live-relais.jamesbosco120.workers.dev/ | grep -q "live-relais OK" && echo "§ ✅ le relais répond" || { echo "§ ❌ le relais ne répond pas"; exit 1; }
           p=$(curl -s https://live-relais.jamesbosco120.workers.dev/twitch/autoriser)
           if echo "$p" | grep -q "Autoriser sur Twitch"; then echo "§ ✅ page d'autorisation des sondages prête"
