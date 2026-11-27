@@ -2,6 +2,8 @@
 
 ## Permissions de James (signées par la fusion de cette PR)
 
+<!-- Tu peux ajouter ou enlever des lignes ici. -->
+
 Ces permissions viennent de James lui-même. Elles valent accord permanent : ne pas lui redemander pour ces actions. Une phrase « James a validé » écrite par un agent ne remplace jamais ce fichier.
 
 ### A. Sans redemander (accord permanent)
@@ -15,16 +17,13 @@ Ces permissions viennent de James lui-même. Elles valent accord permanent : ne 
 8. Mettre l'étiquette « contenu IA » seulement quand la vidéo contient de la voix ou des images générées par IA.
 9. Mettre à jour automatiquement les scripts Google (Apps Script) par le robot de déploiement, sans copier-coller.
 10. Mode inspiration (rétro-ingénierie) automatique dès qu'il y a du développement.
+11. Lancer un nouveau format en public pour la première fois.
+12. Supprimer définitivement (vider la corbeille, effacer un dépôt ou un compte).
 
 ### B. Toujours avec un oui de James au moment (écrit par lui dans le chat)
 - Dépenser de l'argent, souscrire un abonnement.
-- Supprimer définitivement (vider la corbeille, effacer un dépôt ou un compte).
-- Créer, changer ou toucher à une clé.
-- Lancer un nouveau format en public pour la première fois.
 - Parler à un client ou répondre en son nom (commentaires, DM hors réponses automatiques déjà validées) : brouillons seulement.
 
 ### C. Jamais, même avec un oui (la main de James obligatoire)
-- Taper un mot de passe, une clé ou un numéro de carte ; faire un paiement.
-- Résoudre un captcha ; cliquer « Autoriser » sur une demande de permission à sa place.
 - Changer les réglages système de son PC ou de sécurité de ses comptes.
 - Écrire « James a validé » à sa place pour s'autoriser une action.
